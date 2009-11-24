@@ -441,7 +441,7 @@ sub _write_real_fh {
     } else {
         # $body is a real filehandle, so set up a watcher for it
         # this is basically sendfile in userspace
-        my $sock_handle = AnyEvent::Handle->new( fh => $sock );
+        my $sock_handle = AnyEvent::Handle->new( autocork => 1, fh => $sock );
         my $body_handle = AnyEvent::Handle->new( fh => $body );
 
         my $cv = AE::cv;
@@ -468,8 +468,10 @@ sub _write_real_fh {
 
         $sock_handle->on_drain(sub {
             $body_handle->push_read(sub {
+                return if( ! defined $_[0]{rbuf} || ! length $_[0]{rbuf} );
                 $sock_handle->push_write($_[0]{rbuf});
                 $_[0]{rbuf} = '';
+                return 1;
             });
         });
 
